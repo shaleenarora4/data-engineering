@@ -21,7 +21,8 @@ conn=sf.connect( account=account,
           warehouse=warehouse,
           role=role,
           database=database,
-          schema=schema)
+          schema=schema
+        )
 
 
 
