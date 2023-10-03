@@ -108,26 +108,48 @@ def create_table(conn, cursor, table_name):
 
 def write_data(conn, cursor, table_name):
     try:
+        df = read_data()
+        missing_column = None
 
         # Check if the table exists
         result = cursor.execute(f"SHOW TABLES LIKE '{table_name}'").fetchone()
+
+        # if table exists
         if result:
             print(f"------------ Table {table_name} exists in Snowflake------------ ")
 
+            # fetch table columns
+            cursor.execute(f"DESCRIBE TABLE {table_name}")
+            existing_columns = [row[0].lower() for row in cursor.fetchall()]
+
+            print('------ existing columns are: ', end='')
+            print(existing_columns)
+            if set(df.columns) - set(existing_columns):
+                missing_column = (set(df.columns) - set(existing_columns)).pop()
+                print(f'missing column is {missing_column}')
+
+            # Columns do not match, alter the Snowflake table to add the extra column
+            # if missing_column:
+                print(f"------------ Altering Table {table_name} to add {missing_column}------------ ")
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {missing_column} STRING")
+                conn.commit()
+                print(f"------------ Altered Table {table_name} to add {missing_column}------------ ")
+
+            else:
+                print(f"------------ No column missing------------ ")
+
+        # If table doesn't exist
         else:
             print(f"------------ Table '{table_name}' does not exist in Snowflake------------ ")
             create_table(conn, cursor, table_name)
 
-        df = read_data()
+        # write data to snowflake
         write_pandas(conn, df, table_name, quote_identifiers=False)
         # df.to_sql('products', conn, index=False, if_exists='append', method=pdwriter())
         print(f"------------ Data loaded successfully into table {table_name} ------------ ")
 
     except Exception as e:
         print(f"------------ Data load failed with error: {str(e)}------------ ")
-
-
-
 
 
 def __main__():
