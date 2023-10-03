@@ -1,6 +1,9 @@
+import argparse
+
 import snowflake.connector as sf
 import pandas as pd
 from snowflake.connector.pandas_tools import write_pandas
+import sys
 
 
 '''
@@ -36,53 +39,43 @@ update_ts	timestamp
 
 def read_data():
     file_path = './products_data_2022.csv'
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(file_path, header=0)
     return df
 
 
-def establish_conn():
+def get_cred():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('user', nargs=1, type=str)
+    parser.add_argument('pwd', nargs=1, type=str)
+    parser.add_argument('acc', nargs=1, type=str)
+    parser.add_argument('db', nargs=1, type=str)
+    parser.add_argument('sch', nargs=1, type=str)
+
+    args = parser.parse_args()
+    return args
+
+
+def establish_sf_conn():
+    cred = get_cred()
     conn = sf.connect(
-        user='SHANA',
-        password='Fruit@789',
-        account='vdrasvo-kl08478',
-        database='PRODUCT_INSIGHTS',
-        schema='PRODUCT_SCHEMA'
-        # session_parameters={
-        #     'QUERY_TAG': 'EndOfMonthFinancials',
-        # }
+        user=cred.user[0],
+        password=cred.pwd[0],
+        account=cred.acc[0],
+        database=cred.db[0],
+        schema=cred.sch[0]
     )
+
+    print('------------ Connection established successfully----------------')
     cursor = conn.cursor()
     return conn, cursor
 
 
-def connect_check(cursor):
+def check_sf_connection(cursor):
     print('---------- Connection Established--------------')
     query = 'select * from products limit 10;'
     res = cursor.execute(query).fetchone()
     print(res)
     print('---------- Executed Query----------------------')
-
-
-def write_data(conn, cursor, table_name):
-    try:
-
-        # Check if the table exists
-        result = cursor.execute(f"SHOW TABLES LIKE '{table_name}'").fetchone()
-        if result:
-            print(f"Table '{table_name}' exists in Snowflake.")
-
-        else:
-            print(f"Table '{table_name}' does not exist in Snowflake.")
-            create_table(conn, cursor, table_name)
-
-        df = read_data()
-        print(df.head())
-        # sf.pandas_tools.write_pandas(conn, df, table_name)
-        # df.to_sql(table_name, engine, index=False, method= 'pd_writer')
-        print(f"Data loaded successfully into table '{table_name}'")
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
 
 
 def create_table(conn, cursor, table_name):
@@ -105,7 +98,7 @@ def create_table(conn, cursor, table_name):
         # Execute the create table SQL statement
         cursor.execute(create_table_sql)
 
-        print(f"Table '{table_name}' created successfully in Snowflake.")
+        print(f"------------ Table {table_name} created successfully in Snowflake------------ ")
 
     except conn.errors.ProgrammingError as pe:
         print(f"Snowflake Error: {pe}")
@@ -113,11 +106,36 @@ def create_table(conn, cursor, table_name):
         print(f"Error: {str(e)}")
 
 
+def write_data(conn, cursor, table_name):
+    try:
+
+        # Check if the table exists
+        result = cursor.execute(f"SHOW TABLES LIKE '{table_name}'").fetchone()
+        if result:
+            print(f"------------ Table {table_name} exists in Snowflake------------ ")
+
+        else:
+            print(f"------------ Table '{table_name}' does not exist in Snowflake------------ ")
+            create_table(conn, cursor, table_name)
+
+        df = read_data()
+        write_pandas(conn, df, table_name, quote_identifiers=False)
+        # df.to_sql('products', conn, index=False, if_exists='append', method=pdwriter())
+        print(f"------------ Data loaded successfully into table {table_name} ------------ ")
+
+    except Exception as e:
+        print(f"------------ Data load failed with error: {str(e)}------------ ")
+
+
+
+
+
 def __main__():
     table_name = 'PRODUCTS'
-    conn, cursor = establish_conn()
-    # connect_check(conn,cursor)
+    conn, cursor = establish_sf_conn()
+    # check_sf_connection(conn,cursor)
     write_data(conn, cursor, table_name)
+    conn.close()
 
 
 __main__()
@@ -128,4 +146,6 @@ errors faced :
 1. if number of columns don't match
 Number of columns in file (8) does not match that of the corresponding table (9),
  use file format option error_on_column_count_mismatch=false to ignore this error
+ 
+ 2. Error: Execution failed on sql 'SELECT name FROM sqlite_master WHERE type='table' AND name=?;': not all arguments converted during string formatting
 '''
