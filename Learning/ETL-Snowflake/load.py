@@ -14,7 +14,15 @@ Tasks
 2. template to create table if doesnt't exists
 3. if exists, does column match
 4. if column doesn't match, alter schema
-5. merge statement
+5. merge statement /overwrite statement 
+
+--------updated tasks-------
+
+table1 doesn't exists --> create table1 (ready)
+table1 exists but needs alteration (ready)
+
+select latest data from table1 and insert in table2 (pending)
+(doesn't matter table2 exists or not --> will always be overwritten)
 
 '''
 
@@ -114,7 +122,7 @@ def write_data(conn, cursor, table_name):
         # Check if the table exists
         result = cursor.execute(f"SHOW TABLES LIKE '{table_name}'").fetchone()
 
-        # if table exists
+        # if table exists in snowflake 
         if result:
             print(f"------------ Table {table_name} exists in Snowflake------------ ")
 
@@ -122,8 +130,8 @@ def write_data(conn, cursor, table_name):
             cursor.execute(f"DESCRIBE TABLE {table_name}")
             existing_columns = [row[0].lower() for row in cursor.fetchall()]
 
-            print('------ existing columns are: ', end='')
-            print(existing_columns)
+            # print('------ existing columns are: ', end='')
+            # print(existing_columns)
             if set(df.columns) - set(existing_columns):
                 missing_column = (set(df.columns) - set(existing_columns)).pop()
                 print(f'missing column is {missing_column}')
