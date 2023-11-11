@@ -16,6 +16,13 @@ Tasks
 4. if column doesn't match, alter schema
 5. merge statement /overwrite statement 
 
+--------updated tasks-------
+
+table1 doesn't exists --> create table1 (ready)
+table1 exists but needs alteration (ready)
+
+select latest data from table1 and insert in table2 (pending)
+(doesn't matter table2 exists or not --> will always be overwritten)
 
 '''
 
